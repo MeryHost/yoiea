@@ -1,15 +1,16 @@
 # MeryHost - Web Hosting Platform
 
 ## Overview
-MeryHost is a full-stack web hosting platform similar to TiinyHost where users can upload zipped folders or single HTML/CSS/JS files and receive unique shareable URLs. The application features a modern purple-accented design matching tiiny.host's aesthetic.
+MeryHost is a full-stack web hosting platform similar to TiinyHost where users can upload zipped folders or single HTML/CSS/JS files and receive unique shareable URLs. The application features a modern purple-accented design matching tiiny.host's aesthetic with full user authentication.
 
 ## Project Status
 ✅ Fully functional hosting platform with:
+- User authentication with Replit Auth (Google, GitHub, Email login)
 - File upload (HTML, CSS, JS, ZIP files)
 - ZIP extraction and static file serving
 - Custom link names for hosted sites
-- Dashboard for managing hosted sites
-- Delete functionality
+- User-specific dashboards showing only their sites
+- Delete functionality with ownership verification
 - Secure file handling with validation
 
 ## Architecture
@@ -21,18 +22,41 @@ MeryHost is a full-stack web hosting platform similar to TiinyHost where users c
 - **UI Components**: Shadcn/ui with Radix primitives
 - **Styling**: Tailwind CSS with purple accent color (265 100% 63%)
 - **Typography**: Inter for UI, JetBrains Mono for monospace
+- **Authentication**: useAuth hook with Replit Auth
 
 ### Backend
 - **Framework**: Express.js
+- **Authentication**: Replit Auth (OpenID Connect) with Passport.js
+- **Session Management**: PostgreSQL session store (connect-pg-simple)
 - **Database**: PostgreSQL (Neon)
 - **File Upload**: Multer (10MB limit)
-- **ZIP Extraction**: Unzipper
+- **ZIP Extraction**: Unzipper with Zip Slip protection
 - **File Storage**: Local filesystem at `/public/sites/{id}/`
 
 ### Database Schema
 ```typescript
+// Sessions table (required for Replit Auth)
+sessions {
+  sid: varchar (primary key) - Session ID
+  sess: jsonb - Session data
+  expire: timestamp - Expiration time
+}
+
+// Users table (required for Replit Auth)
+users {
+  id: varchar (primary key) - Generated UUID or Replit user ID
+  email: varchar (unique) - User email
+  firstName: varchar - First name
+  lastName: varchar - Last name
+  profileImageUrl: varchar - Profile image URL
+  createdAt: timestamp - Auto-generated
+  updatedAt: timestamp - Auto-generated
+}
+
+// Sites table with user association
 sites {
   id: text (primary key) - Generated from customLink or random hex
+  userId: varchar (foreign key to users.id) - Owner of the site
   filename: text - Original filename
   customLink: text | null - Optional custom URL segment
   fileType: text - File extension (html, css, js, zip)
@@ -42,21 +66,33 @@ sites {
 
 ## API Endpoints
 
-### POST /api/upload
+### Authentication Endpoints
+- **GET /api/login** - Initiates Replit Auth login flow
+- **GET /api/callback** - OAuth callback handler
+- **GET /api/logout** - Logs out user and redirects
+- **GET /api/auth/user** - Returns current authenticated user (protected)
+
+### Site Management Endpoints
+All endpoints below require authentication (isAuthenticated middleware).
+
+**POST /api/upload**
 - Accepts: multipart/form-data with 'file' and optional 'customLink'
 - Validates: File type (.html, .css, .js, .zip only)
 - Returns: `{ success: true, site: {...}, url: string }`
 - Security: Zip Slip protection, file type validation, schema validation
+- Associates site with authenticated user
 
-### GET /api/sites
-- Returns: Array of all hosted sites with URLs
+**GET /api/sites**
+- Returns: Array of sites owned by authenticated user with URLs
 
-### GET /api/sites/:id
-- Returns: Single site by ID with URL
+**GET /api/sites/:id**
+- Returns: Single site by ID (only if owned by authenticated user)
+- Returns 403 if site belongs to another user
 
-### DELETE /api/sites/:id
+**DELETE /api/sites/:id**
 - Deletes site files and database record
 - Returns: `{ success: true }`
+- Only allows deletion of sites owned by authenticated user
 
 ## URL Structure
 - **ZIP files**: `/site/{id}/` (serves index.html from extracted content)
@@ -64,24 +100,32 @@ sites {
 - **CSS/JS files**: `/site/{id}/{filename}`
 
 ## Security Features
-1. **File Type Validation**: Only allows .html, .css, .js, .zip files
-2. **Zip Slip Protection**: Validates ZIP entry paths to prevent directory traversal
-3. **Schema Validation**: Uses Zod schemas to validate all inputs
-4. **File Size Limit**: 10MB maximum upload size
-5. **Custom Link Sanitization**: Only alphanumeric characters and hyphens allowed
+1. **User Authentication**: Replit Auth with OpenID Connect
+2. **Session Management**: Secure session storage in PostgreSQL
+3. **User Isolation**: Users can only access their own sites
+4. **File Type Validation**: Only allows .html, .css, .js, .zip files
+5. **Zip Slip Protection**: Validates ZIP entry paths to prevent directory traversal
+6. **Schema Validation**: Uses Zod schemas to validate all inputs
+7. **File Size Limit**: 10MB maximum upload size
+8. **Custom Link Sanitization**: Only alphanumeric characters and hyphens allowed
+9. **Credential Management**: All API requests include credentials for session cookies
 
 ## User Flow
-1. **Homepage** (`/`): Upload files with optional custom link name
-2. **Upload**: File is validated, processed (extracted if ZIP), and stored
-3. **Success Modal**: Shows shareable URL
-4. **Dashboard** (`/account`): Lists all hosted sites
-5. **Manage**: Users can view URLs and delete sites
+1. **Homepage** (`/`): Landing page with upload card
+   - Logged out: Shows "Log in" and "Sign up free" buttons
+   - Logged in: Shows "My Sites" and "Log out" buttons
+2. **Login**: Click login → redirected to Replit Auth → callback redirects to home
+3. **Upload**: User uploads file (requires authentication)
+4. **Success Modal**: Shows shareable URL
+5. **Dashboard** (`/account`): Lists all user's hosted sites (requires authentication)
+6. **Manage**: Users can view URLs and delete their own sites
 
 ## Pages
-- **Home** (`/`): Landing page with upload card
-- **Account** (`/account`): Dashboard showing Live Projects and Custom Domains sections
+- **Home** (`/`): Landing page with upload card (accessible to all)
+- **Account** (`/account`): Dashboard showing Live Projects and Custom Domains (requires authentication)
 
 ## Recent Changes (October 25, 2025)
+### Initial Implementation
 - Implemented full backend with PostgreSQL database
 - Added secure file upload with Multer and Unzipper
 - Implemented Zip Slip protection and file validation
@@ -90,24 +134,42 @@ sites {
 - Fixed URL construction for all file types
 - End-to-end tested upload and delete flows
 
+### Authentication Implementation
+- Integrated Replit Auth for user authentication
+- Added users and sessions tables to database
+- Updated sites table with userId foreign key for ownership
+- Protected all API routes with isAuthenticated middleware
+- Implemented user-specific site filtering (users only see their own sites)
+- Added useAuth hook for authentication state management
+- Updated Header to show login/logout based on auth state
+- Protected Account page to require authentication
+- Added graceful 401 error handling with login redirects
+- Fixed queryClient to properly handle auth state with credentials
+
 ## Design Guidelines
 - **Primary Color**: Purple (265 100% 63%)
 - **Design Inspiration**: tiiny.host
 - **Header**: Logo on left, action buttons on right
-  - Homepage: "Log in" and "Sign up free"
-  - Account: "Earn $50", "Add Team", "Free plan", "Upgrade"
+  - Homepage (logged out): "Log in" and "Sign up free"
+  - Homepage (logged in): "My Sites" and "Log out"
+  - Account page: "Earn $50", "Add Team", "Free plan", "Upgrade"
 - **Upload Card**: Centered with custom link input, file type tabs, drag & drop
 - **Dashboard**: Clean card-based layout with action buttons
 
+## Technical Notes
+- **Query Key Convention**: First element of query key array must be the full URL string
+- **Credentials**: All API requests include `credentials: 'include'` for session cookies
+- **Error Handling**: 401 errors trigger automatic login redirect with toast notification
+
 ## Known Limitations
 - Currently using in-development database (not production)
-- No authentication system yet
-- No custom domain functionality implemented
-- Free plan limit: 1 live site
+- Free plan limit: 1 live site per user
+- Custom domain functionality not yet implemented
 
 ## Future Enhancements
-- User authentication and accounts
-- Custom domain support
-- Automated tests for security vulnerabilities
+- Custom domain support with domain verification
+- File analytics and usage statistics
+- Automated cleanup of expired sessions
 - Better error messages (400 vs 500 responses)
-- Additional path resolution hardening for cross-platform compatibility
+- Team collaboration features
+- Additional file type support (with security review)

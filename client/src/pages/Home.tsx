@@ -7,6 +7,8 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { isUnauthorizedError } from "@/lib/authUtils";
 
 interface UploadResponse {
   success: boolean;
@@ -26,6 +28,7 @@ export default function Home() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [uploadedSite, setUploadedSite] = useState<UploadResponse['site'] | null>(null);
   const { toast } = useToast();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
   const uploadMutation = useMutation({
     mutationFn: async ({ file, linkName }: { file: File; linkName: string }) => {
@@ -36,6 +39,7 @@ export default function Home() {
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -54,6 +58,17 @@ export default function Home() {
       });
     },
     onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Please log in",
+          description: "You need to be logged in to upload files.",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 1000);
+        return;
+      }
       toast({
         title: "Upload failed",
         description: error.message,
@@ -63,6 +78,16 @@ export default function Home() {
   });
 
   const handleUpload = async (file: File, linkName: string) => {
+    if (!isAuthenticated && !authLoading) {
+      toast({
+        title: "Please log in",
+        description: "You need to be logged in to upload files.",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 1000);
+      return;
+    }
     uploadMutation.mutate({ file, linkName });
   };
 

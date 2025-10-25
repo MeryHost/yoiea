@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 import multer from "multer";
 import { randomBytes } from "crypto";
 import * as fs from "fs";
@@ -122,16 +123,32 @@ function deleteDirectory(dirPath: string): void {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Set up Replit Auth
+  await setupAuth(app);
+
   // Serve static files for hosted sites
   app.use('/site', express.static(UPLOAD_DIR));
 
-  // Upload file endpoint
-  app.post('/api/upload', upload.single('file'), async (req, res) => {
+  // Get current user
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Upload file endpoint (protected)
+  app.post('/api/upload', isAuthenticated, upload.single('file'), async (req: any, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: 'No file uploaded' });
       }
 
+      const userId = req.user.claims.sub;
       const customLink = req.body.customLink || '';
       const filename = req.file.originalname;
       const fileType = path.extname(filename).slice(1).toLowerCase();
@@ -147,6 +164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate with schema
       const siteData = insertSiteSchema.parse({
         id,
+        userId,
         filename,
         customLink: customLink || null,
         fileType,
@@ -209,12 +227,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all sites
-  app.get('/api/sites', async (req, res) => {
+  // Get all sites for current user (protected)
+  app.get('/api/sites', isAuthenticated, async (req: any, res) => {
     try {
-      const allSites = await storage.getAllSites();
+      const userId = req.user.claims.sub;
+      const userSites = await storage.getSitesByUser(userId);
+      
       // Add URL to each site
-      const sitesWithUrls = allSites.map(site => {
+      const sitesWithUrls = userSites.map(site => {
         let url = `/site/${site.id}`;
         if (site.fileType !== 'zip' && site.fileType !== 'html') {
           url = `/site/${site.id}/${site.filename}`;
@@ -223,6 +243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         return { ...site, url };
       });
+      
       res.json(sitesWithUrls);
     } catch (error) {
       console.error('Error fetching sites:', error);
@@ -230,12 +251,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get single site
-  app.get('/api/sites/:id', async (req, res) => {
+  // Get single site (protected)
+  app.get('/api/sites/:id', isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const site = await storage.getSite(req.params.id);
+      
       if (!site) {
         return res.status(404).json({ error: 'Site not found' });
+      }
+      
+      // Check if site belongs to user
+      if (site.userId !== userId) {
+        return res.status(403).json({ error: 'Forbidden' });
       }
       
       // Add URL to the site
@@ -253,12 +281,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete site
-  app.delete('/api/sites/:id', async (req, res) => {
+  // Delete site (protected)
+  app.delete('/api/sites/:id', isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const site = await storage.getSite(req.params.id);
+      
       if (!site) {
         return res.status(404).json({ error: 'Site not found' });
+      }
+      
+      // Check if site belongs to user
+      if (site.userId !== userId) {
+        return res.status(403).json({ error: 'Forbidden' });
       }
 
       // Delete files
@@ -266,7 +301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       deleteDirectory(siteDir);
 
       // Delete from database
-      await storage.deleteSite(req.params.id);
+      await storage.deleteSite(req.params.id, userId);
 
       res.json({ success: true });
     } catch (error) {

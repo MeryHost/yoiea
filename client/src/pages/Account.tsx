@@ -5,11 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Code, Filter, RotateCcw, Settings2, CloudUpload, Plus, Archive } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
+import { isUnauthorizedError } from "@/lib/authUtils";
 
 interface Site {
   id: string;
@@ -25,10 +27,27 @@ export default function Account() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [siteToDelete, setSiteToDelete] = useState<Site | null>(null);
   const { toast } = useToast();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      toast({
+        title: "Unauthorized",
+        description: "You are logged out. Logging in again...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+      return;
+    }
+  }, [isAuthenticated, authLoading, toast]);
 
   // Fetch all sites
   const { data: sites = [], isLoading } = useQuery<Site[]>({
     queryKey: ['/api/sites'],
+    enabled: isAuthenticated,
   });
 
   // Delete mutation
@@ -43,7 +62,18 @@ export default function Account() {
         description: "Your site has been removed.",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
       toast({
         title: "Delete failed",
         description: "Failed to delete site. Please try again.",
@@ -78,6 +108,23 @@ export default function Account() {
   const handleAddDomain = () => {
     console.log('Add custom domain clicked');
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="py-8 px-6 md:px-8">
+          <div className="max-w-7xl mx-auto text-center py-12">
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null; // Will redirect in useEffect
+  }
 
   return (
     <div className="min-h-screen bg-background">
