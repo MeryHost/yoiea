@@ -5,41 +5,65 @@ import { CallToAction } from "@/components/CallToAction";
 import { SuccessModal } from "@/components/SuccessModal";
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useMutation } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
-interface Site {
-  id: string;
-  filename: string;
-  timestamp: string;
-  fileType: string;
+interface UploadResponse {
+  success: boolean;
+  site: {
+    id: string;
+    filename: string;
+    uploadedAt: string;
+    fileType: string;
+    customLink: string | null;
+    url: string;
+  };
   url: string;
 }
 
 export default function Home() {
   const [, setLocation] = useLocation();
-  const [isUploading, setIsUploading] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [uploadedSite, setUploadedSite] = useState<Site | null>(null);
+  const [uploadedSite, setUploadedSite] = useState<UploadResponse['site'] | null>(null);
+  const { toast } = useToast();
 
-  //todo: remove mock functionality
+  const uploadMutation = useMutation({
+    mutationFn: async ({ file, linkName }: { file: File; linkName: string }) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('customLink', linkName);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Upload failed');
+      }
+
+      return response.json() as Promise<UploadResponse>;
+    },
+    onSuccess: (data) => {
+      setUploadedSite(data.site);
+      setShowSuccessModal(true);
+      toast({
+        title: "Upload successful!",
+        description: "Your site is now live.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleUpload = async (file: File, linkName: string) => {
-    console.log('Upload started:', file.name, 'Link name:', linkName);
-    setIsUploading(true);
-
-    // Simulate upload delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    // Generate mock site
-    const newSite: Site = {
-      id: Math.random().toString(36).substring(2, 8),
-      filename: file.name,
-      timestamp: new Date().toISOString(),
-      fileType: file.name.endsWith('.zip') ? 'zip' : file.name.split('.').pop() || 'html',
-      url: `${window.location.origin}/site/${linkName || Math.random().toString(36).substring(2, 8)}`,
-    };
-
-    setUploadedSite(newSite);
-    setIsUploading(false);
-    setShowSuccessModal(true);
+    uploadMutation.mutate({ file, linkName });
   };
 
   const handleSuccessClose = () => {
@@ -47,6 +71,8 @@ export default function Home() {
     // Redirect to account page after upload
     setLocation('/account');
   };
+
+  const siteUrl = uploadedSite ? `${window.location.origin}${uploadedSite.url}` : '';
 
   return (
     <div className="min-h-screen bg-background">
@@ -70,7 +96,7 @@ export default function Home() {
 
               {/* Center: Upload Card */}
               <div className="flex-shrink-0">
-                <UploadCard onUpload={handleUpload} isUploading={isUploading} />
+                <UploadCard onUpload={handleUpload} isUploading={uploadMutation.isPending} />
               </div>
 
               {/* Right: CTA */}
@@ -92,7 +118,7 @@ export default function Home() {
         <SuccessModal
           isOpen={showSuccessModal}
           onClose={handleSuccessClose}
-          siteUrl={uploadedSite.url}
+          siteUrl={siteUrl}
           siteId={uploadedSite.id}
         />
       )}

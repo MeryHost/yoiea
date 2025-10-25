@@ -1,6 +1,5 @@
 import { Header } from "@/components/Header";
 import { SiteCard } from "@/components/SiteCard";
-import { SuccessModal } from "@/components/SuccessModal";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,32 +7,50 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { useState } from "react";
 import { Code, Filter, RotateCcw, Settings2, CloudUpload, Plus, Archive } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface Site {
   id: string;
   filename: string;
-  timestamp: string;
+  uploadedAt: string;
   fileType: string;
+  customLink: string | null;
   url: string;
 }
 
 export default function Account() {
-  //todo: remove mock functionality
-  const [sites, setSites] = useState<Site[]>([
-    {
-      id: "a1b2c3",
-      filename: "portfolio-website.zip",
-      timestamp: new Date(Date.now() - 3600000).toISOString(),
-      fileType: "zip",
-      url: `${window.location.origin}/site/a1b2c3`,
-    },
-  ]);
-
   const [selectedTab, setSelectedTab] = useState("all");
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [uploadedSite, setUploadedSite] = useState<Site | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [siteToDelete, setSiteToDelete] = useState<Site | null>(null);
+  const { toast } = useToast();
+
+  // Fetch all sites
+  const { data: sites = [], isLoading } = useQuery<Site[]>({
+    queryKey: ['/api/sites'],
+  });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest('DELETE', `/api/sites/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/sites'] });
+      toast({
+        title: "Site deleted",
+        description: "Your site has been removed.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Delete failed",
+        description: "Failed to delete site. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const liveSites = sites.length;
   const maxSites = 1;
@@ -48,16 +65,13 @@ export default function Account() {
 
   const handleDeleteConfirm = () => {
     if (siteToDelete) {
-      console.log('Deleting site:', siteToDelete.id);
-      setSites(sites.filter(s => s.id !== siteToDelete.id));
+      deleteMutation.mutate(siteToDelete.id);
       setSiteToDelete(null);
     }
     setDeleteDialogOpen(false);
   };
 
   const handleUploadClick = () => {
-    console.log('Upload file clicked');
-    // Navigate to home page or open upload modal
     window.location.href = '/';
   };
 
@@ -124,20 +138,24 @@ export default function Account() {
                     <Settings2 className="w-4 h-4" />
                   </Button>
                   <Button 
-                    className="ml-2 gap-2"
+                    className="ml-2"
                     onClick={handleUploadClick}
-                    data-testid="button-upload-file"
+                    data-testid="button-upload-file-header"
                   >
-                    <CloudUpload className="w-4 h-4" />
+                    <CloudUpload className="w-4 h-4 mr-2" />
                     Upload file
                   </Button>
                 </div>
               </div>
 
-              {/* Projects List */}
-              {sites.length === 0 ? (
-                <div className="py-16 text-center space-y-4">
-                  <p className="text-muted-foreground">No live projects</p>
+              {/* Sites List or Empty State */}
+              {isLoading ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  Loading sites...
+                </div>
+              ) : sites.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground mb-4">No live projects</p>
                   <Button 
                     variant="outline"
                     onClick={handleUploadClick}
@@ -147,11 +165,15 @@ export default function Account() {
                   </Button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid gap-4">
                   {sites.map((site) => (
                     <SiteCard
                       key={site.id}
-                      {...site}
+                      id={site.id}
+                      filename={site.filename}
+                      timestamp={site.uploadedAt}
+                      fileType={site.fileType}
+                      url={`${window.location.origin}${site.url}`}
                       onDelete={handleDeleteClick}
                     />
                   ))}
@@ -162,51 +184,34 @@ export default function Account() {
 
           {/* Custom Domains Section */}
           <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Custom Domains</h2>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="gap-2"
-                onClick={handleAddDomain}
-                data-testid="button-add-domain"
-              >
-                <Plus className="w-4 h-4" />
-                Add new
-              </Button>
-            </div>
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold">Custom Domains</h2>
+                <Button 
+                  variant="outline"
+                  onClick={handleAddDomain}
+                  data-testid="button-add-domain"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add new
+                </Button>
+              </div>
 
-            {/* Empty state for custom domains */}
-            <div className="mt-6 py-12 text-center">
-              <p className="text-sm text-muted-foreground">
+              <div className="text-center py-12 text-muted-foreground">
                 No custom domains configured
-              </p>
+              </div>
             </div>
           </Card>
         </div>
       </main>
 
-      {/* Modals */}
-      {uploadedSite && (
-        <SuccessModal
-          isOpen={showSuccessModal}
-          onClose={() => setShowSuccessModal(false)}
-          siteUrl={uploadedSite.url}
-          siteId={uploadedSite.id}
-        />
-      )}
-
-      {siteToDelete && (
-        <DeleteConfirmDialog
-          isOpen={deleteDialogOpen}
-          onClose={() => {
-            setDeleteDialogOpen(false);
-            setSiteToDelete(null);
-          }}
-          onConfirm={handleDeleteConfirm}
-          siteName={siteToDelete.filename}
-        />
-      )}
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmDialog
+        isOpen={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        siteName={siteToDelete?.filename || ''}
+      />
     </div>
   );
 }
