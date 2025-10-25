@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated } from "./auth";
 import multer from "multer";
 import { randomBytes } from "crypto";
 import * as fs from "fs";
@@ -123,23 +123,11 @@ function deleteDirectory(dirPath: string): void {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Set up Replit Auth
+  // Set up authentication
   await setupAuth(app);
 
   // Serve static files for hosted sites
   app.use('/site', express.static(UPLOAD_DIR));
-
-  // Get current user
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
 
   // Upload file endpoint (protected)
   app.post('/api/upload', isAuthenticated, upload.single('file'), async (req: any, res) => {
@@ -148,7 +136,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'No file uploaded' });
       }
 
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const customLink = req.body.customLink || '';
       const filename = req.file.originalname;
       const fileType = path.extname(filename).slice(1).toLowerCase();
@@ -230,7 +218,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all sites for current user (protected)
   app.get('/api/sites', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const userSites = await storage.getSitesByUser(userId);
       
       // Add URL to each site
@@ -254,7 +242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get single site (protected)
   app.get('/api/sites/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const site = await storage.getSite(req.params.id);
       
       if (!site) {
@@ -284,7 +272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete site (protected)
   app.delete('/api/sites/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const site = await storage.getSite(req.params.id);
       
       if (!site) {
