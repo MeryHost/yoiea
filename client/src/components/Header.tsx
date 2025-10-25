@@ -18,21 +18,6 @@ export function Header() {
             <Zap className="w-6 h-6 text-primary fill-primary" />
             <span className="text-xl font-bold">MeryHost</span>
           </button>
-          
-          <nav className="hidden md:flex items-center gap-6">
-            <a href="#" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Blog
-            </a>
-            <a href="#" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              API
-            </a>
-            <a href="#" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Help
-            </a>
-            <a href="#" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Pricing
-            </a>
-          </nav>
         </div>
 
         {isAccountPage ? (
