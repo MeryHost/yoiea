@@ -1,8 +1,8 @@
-# MeryHost Design Guidelines
+# MeryHost Admin Panel Design Guidelines
 
 ## Design Approach
 
-**Selected Approach:** Design System - Drawing inspiration from modern developer platforms like Vercel, Linear, and GitHub's interface philosophy. These platforms excel at making technical workflows feel effortless through clarity, precision, and subtle sophistication.
+**Selected Approach:** Admin Panel - Clean, functional design focused on efficiency and ease of use for personal hosting management. Yellow accent color provides energy and visibility while maintaining professional appearance.
 
 **Core Principles:**
 - Clarity over decoration: Every element serves a functional purpose

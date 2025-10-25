@@ -1,17 +1,21 @@
 # MeryHost - Personal Admin Panel
 
 ## Overview
-MeryHost is a personal web hosting admin panel where you can upload zipped folders or single HTML/CSS/JS files and receive unique shareable URLs. The application features a modern purple-accented design and requires authentication to access.
+MeryHost is a personal web hosting admin panel where you can upload zipped folders or single HTML/CSS/JS files and receive unique shareable URLs. The application features a modern yellow-accented design with simple username/password authentication.
 
 ## Project Status
 ✅ Fully functional hosting platform with:
-- User authentication with Replit Auth (admin access only)
+- Simple admin authentication (username/password)
 - File upload (HTML, CSS, JS, ZIP files)
 - ZIP extraction and static file serving
 - Custom link names for hosted sites
-- Dashboard showing all your hosted sites
+- Dashboard showing all hosted sites
 - Delete functionality for managing sites
 - Secure file handling with validation
+
+## Admin Credentials
+- **Username**: MeryHostapps
+- **Password**: 1111Mery–host
 
 ## Architecture
 
@@ -20,13 +24,13 @@ MeryHost is a personal web hosting admin panel where you can upload zipped folde
 - **Routing**: Wouter
 - **State Management**: TanStack Query (React Query v5)
 - **UI Components**: Shadcn/ui with Radix primitives
-- **Styling**: Tailwind CSS with purple accent color (265 100% 63%)
+- **Styling**: Tailwind CSS with yellow accent color (45 100% 50%)
 - **Typography**: Inter for UI, JetBrains Mono for monospace
-- **Authentication**: useAuth hook with Replit Auth
+- **Authentication**: Simple session-based authentication with login form
 
 ### Backend
 - **Framework**: Express.js
-- **Authentication**: Replit Auth (OpenID Connect) with Passport.js
+- **Authentication**: Session-based with hardcoded admin credentials
 - **Session Management**: PostgreSQL session store (connect-pg-simple)
 - **Database**: PostgreSQL (Neon)
 - **File Upload**: Multer (10MB limit)
@@ -35,22 +39,19 @@ MeryHost is a personal web hosting admin panel where you can upload zipped folde
 
 ### Database Schema
 ```typescript
-// Sessions table (required for Replit Auth)
+// Sessions table (for session storage)
 sessions {
   sid: varchar (primary key) - Session ID
   sess: jsonb - Session data
   expire: timestamp - Expiration time
 }
 
-// Users table (required for Replit Auth)
+// Users table (simplified admin table)
 users {
-  id: varchar (primary key) - Generated UUID or Replit user ID
-  email: varchar (unique) - User email
-  firstName: varchar - First name
-  lastName: varchar - Last name
-  profileImageUrl: varchar - Profile image URL
+  id: varchar (primary key) - Generated UUID
+  username: varchar (unique) - Admin username
+  passwordHash: varchar - Hashed password (not currently used - plaintext comparison)
   createdAt: timestamp - Auto-generated
-  updatedAt: timestamp - Auto-generated
 }
 
 // Sites table with user association
@@ -67,9 +68,8 @@ sites {
 ## API Endpoints
 
 ### Authentication Endpoints
-- **GET /api/login** - Initiates Replit Auth login flow (access directly via URL)
-- **GET /api/callback** - OAuth callback handler
-- **GET /api/logout** - Logs out user and redirects
+- **POST /api/login** - Login with username and password (returns JSON)
+- **GET /api/logout** - Logs out user and redirects to home
 - **GET /api/auth/user** - Returns current authenticated user (protected)
 
 ### Site Management Endpoints
@@ -100,9 +100,9 @@ All endpoints below require authentication (isAuthenticated middleware).
 - **CSS/JS files**: `/site/{id}/{filename}`
 
 ## Security Features
-1. **User Authentication**: Replit Auth with OpenID Connect
+1. **Simple Authentication**: Session-based admin login
 2. **Session Management**: Secure session storage in PostgreSQL
-3. **User Isolation**: Users can only access their own sites
+3. **User Isolation**: Single admin user can access all sites
 4. **File Type Validation**: Only allows .html, .css, .js, .zip files
 5. **Zip Slip Protection**: Validates ZIP entry paths to prevent directory traversal
 6. **Schema Validation**: Uses Zod schemas to validate all inputs
@@ -111,14 +111,16 @@ All endpoints below require authentication (isAuthenticated middleware).
 9. **Credential Management**: All API requests include credentials for session cookies
 
 ## User Flow (Admin Panel)
-1. **Access**: Navigate to `/api/login` to authenticate
-2. **Homepage** (`/`): Upload card for adding new sites
-3. **Upload**: Upload file with optional custom link
-4. **Success Modal**: Shows shareable URL
-5. **Dashboard** (`/account`): Lists all hosted sites
-6. **Manage**: View URLs and delete sites
+1. **Access**: Navigate to `/login` to authenticate
+2. **Login**: Enter admin credentials
+3. **Homepage** (`/`): Upload card for adding new sites
+4. **Upload**: Upload file with optional custom link
+5. **Success Modal**: Shows shareable URL
+6. **Dashboard** (`/account`): Lists all hosted sites
+7. **Manage**: View URLs and delete sites
 
 ## Pages
+- **Login** (`/login`): Simple login form with username/password
 - **Home** (`/`): Upload interface (requires authentication)
 - **Account** (`/account`): Dashboard showing all hosted sites (requires authentication)
 
@@ -132,37 +134,38 @@ All endpoints below require authentication (isAuthenticated middleware).
 - Fixed URL construction for all file types
 - End-to-end tested upload and delete flows
 
-### Authentication Implementation
-- Integrated Replit Auth for user authentication
-- Added users and sessions tables to database
-- Updated sites table with userId foreign key for ownership
-- Protected all API routes with isAuthenticated middleware
-- Implemented user-specific site filtering (users only see their own sites)
-- Added useAuth hook for authentication state management
-- Protected all pages to require authentication
-- Fixed queryClient to properly handle auth state with credentials
+### Authentication Conversion (from Replit Auth to Simple Auth)
+- Removed Replit Auth (OpenID Connect) integration
+- Implemented simple session-based authentication
+- Hardcoded admin credentials in backend (MeryHostapps / 1111Mery–host)
+- Created custom login page with username/password form
+- Simplified user table (removed OIDC fields)
+- Updated all routes to use session-based userId
+- Changed authentication redirects from `/api/login` to `/login`
 
-### Admin Panel Conversion
-- Removed public login/signup buttons from header
-- Simplified header to show only "My Sites" and "Log out" when authenticated
-- Access login by navigating directly to `/api/login`
-- All features require authentication (admin-only access)
+### Design Changes
+- Changed theme color from purple (265 100% 63%) to yellow (45 100% 50%)
+- Updated primary color throughout the application
+- Maintained clean, professional admin panel aesthetic
 
 ## Design Guidelines
-- **Primary Color**: Purple (265 100% 63%)
+- **Primary Color**: Yellow (45 100% 50%)
+- **Design Style**: Clean admin panel focused on functionality
 - **Header**: Logo on left, minimal controls on right (My Sites, Log out)
 - **Upload Card**: Centered with custom link input, file type tabs, drag & drop
 - **Dashboard**: Clean card-based layout with action buttons
+- **Login**: Centered card with username/password inputs
 
 ## Technical Notes
 - **Query Key Convention**: First element of query key array must be the full URL string
 - **Credentials**: All API requests include `credentials: 'include'` for session cookies
-- **Authentication Access**: Navigate to `/api/login` to authenticate
-- **Admin Panel**: No public signup - authentication required for all features
+- **Authentication**: Simple session-based auth with hardcoded credentials
+- **Admin Panel**: Single admin user manages all hosted sites
 
 ## Known Limitations
 - Currently using in-development database (not production)
-- Access requires manual navigation to `/api/login`
+- Password stored as plaintext in code (acceptable for single-user admin panel)
+- No password hashing implemented (not needed for this use case)
 
 ## Future Enhancements
 - Custom domain support with domain verification
@@ -170,3 +173,4 @@ All endpoints below require authentication (isAuthenticated middleware).
 - Automated cleanup of expired sessions
 - Better error messages (400 vs 500 responses)
 - Additional file type support (with security review)
+- Optional password hashing for improved security
