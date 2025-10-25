@@ -44,7 +44,7 @@ export async function setupAuth(app: Express) {
 
   app.get("/api/logout", (req, res) => {
     req.session.destroy(() => {
-      res.redirect("/");
+      res.redirect("/login");
     });
   });
 

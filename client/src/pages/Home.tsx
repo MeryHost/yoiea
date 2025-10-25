@@ -80,10 +80,9 @@ export default function Home() {
       toast({
         title: "Please log in",
         description: "You need to be logged in to upload files.",
+        variant: "destructive",
       });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 1000);
+      setLocation("/login");
       return;
     }
     uploadMutation.mutate({ file, linkName });
