@@ -1,4 +1,4 @@
-import { Zap, Menu } from "lucide-react";
+import { Zap, Menu, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
@@ -21,48 +21,67 @@ export function Header() {
           
           <nav className="hidden md:flex items-center gap-6">
             <a href="#" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              Blog
+            </a>
+            <a href="#" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              API
+            </a>
+            <a href="#" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               Help
             </a>
             <a href="#" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Integrations
-            </a>
-            <a href="#" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Contact Sales
+              Pricing
             </a>
           </nav>
         </div>
 
-        <div className="flex items-center gap-3">
-          {isAccountPage && (
-            <>
-              <span className="hidden sm:inline text-sm text-muted-foreground">
-                Earn $50
-              </span>
-              <Button variant="outline" size="sm" data-testid="button-add-team">
-                Add Team
-              </Button>
-              <Button variant="ghost" size="sm" className="gap-2" data-testid="button-free-plan">
-                <Badge variant="secondary" className="rounded-full">
-                  Free plan
-                </Badge>
-                <Menu className="w-4 h-4" />
-              </Button>
-            </>
-          )}
-          <Button 
-            variant={isAccountPage ? "default" : "ghost"} 
-            size="sm" 
-            onClick={() => setLocation('/account')}
-            data-testid="button-account"
-          >
-            {isAccountPage ? 'Dashboard' : 'My Account'}
-          </Button>
-          {!isAccountPage && (
-            <Button size="sm" data-testid="button-signup">
-              Sign up free
+        {isAccountPage ? (
+          <div className="flex items-center gap-3">
+            <span className="hidden sm:inline text-sm text-muted-foreground">
+              Earn $50
+            </span>
+            <Button variant="outline" size="sm" data-testid="button-add-team">
+              Add Team
             </Button>
-          )}
-        </div>
+            <Button variant="ghost" size="sm" className="gap-2" data-testid="button-free-plan">
+              <Badge variant="secondary" className="rounded-full">
+                Free plan
+              </Badge>
+              <Menu className="w-4 h-4" />
+            </Button>
+            <Button 
+              size="sm" 
+              className="gap-2"
+              data-testid="button-upgrade"
+            >
+              Upgrade
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <a href="#" className="hidden sm:inline text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              Contact sales
+            </a>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              data-testid="button-login"
+              onClick={() => console.log('Login clicked')}
+            >
+              Log in
+            </Button>
+            <Button 
+              size="sm" 
+              className="gap-2"
+              data-testid="button-signup"
+              onClick={() => console.log('Sign up clicked')}
+            >
+              Sign up free
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
       </div>
     </header>
   );
