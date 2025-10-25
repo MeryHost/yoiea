@@ -142,11 +142,21 @@ All endpoints below require authentication (isAuthenticated middleware).
 - Simplified user table (removed OIDC fields)
 - Updated all routes to use session-based userId
 - Changed authentication redirects from `/api/login` to `/login`
+- Fixed Home.tsx redirect to use `/login` instead of deprecated `/api/login`
+- Created admin user record in database to satisfy foreign key constraints
 
 ### Design Changes
 - Changed theme color from purple (265 100% 63%) to yellow (45 100% 50%)
 - Updated primary color throughout the application
 - Maintained clean, professional admin panel aesthetic
+
+### ZIP Extraction Fix
+- Fixed nested folder issue in ZIP uploads
+- Added automatic flattening for single-folder ZIP structures
+- When a ZIP contains only one top-level directory, contents are moved up one level
+- This ensures index.html is at the correct path (/public/sites/{id}/index.html)
+- Manually fixed existing snake-game upload to work correctly
+- New uploads will automatically flatten nested structures
 
 ## Design Guidelines
 - **Primary Color**: Yellow (45 100% 50%)

@@ -68,6 +68,55 @@ function isValidZipEntryPath(entryPath: string): boolean {
   return true;
 }
 
+// Helper function to flatten single-folder ZIP structures
+async function flattenZipIfNeeded(extractPath: string): Promise<void> {
+  const entries = fs.readdirSync(extractPath);
+  
+  // Filter out hidden/system files (macOS metadata, .DS_Store, etc.)
+  const visibleEntries = entries.filter(entry => {
+    // Ignore hidden files (starting with .)
+    if (entry.startsWith('.')) return false;
+    // Ignore macOS metadata folder
+    if (entry === '__MACOSX') return false;
+    return true;
+  });
+  
+  // Check if there's only one visible top-level entry and it's a directory
+  if (visibleEntries.length === 1) {
+    const singleEntry = visibleEntries[0];
+    const singleEntryPath = path.join(extractPath, singleEntry);
+    const stats = fs.statSync(singleEntryPath);
+    
+    if (stats.isDirectory()) {
+      // Move all contents from the nested folder to the parent
+      const nestedContents = fs.readdirSync(singleEntryPath);
+      
+      for (const item of nestedContents) {
+        const srcPath = path.join(singleEntryPath, item);
+        const destPath = path.join(extractPath, item);
+        fs.renameSync(srcPath, destPath);
+      }
+      
+      // Remove the now-empty nested folder
+      fs.rmdirSync(singleEntryPath);
+      
+      // Clean up any remaining hidden/system files
+      for (const entry of entries) {
+        if (!visibleEntries.includes(entry)) {
+          const hiddenPath = path.join(extractPath, entry);
+          if (fs.existsSync(hiddenPath)) {
+            if (fs.statSync(hiddenPath).isDirectory()) {
+              fs.rmSync(hiddenPath, { recursive: true, force: true });
+            } else {
+              fs.unlinkSync(hiddenPath);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 // Helper function to extract zip file safely
 async function extractZipSafely(zipPath: string, destPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -104,7 +153,15 @@ async function extractZipSafely(zipPath: string, destPath: string): Promise<void
           entry.pipe(fs.createWriteStream(targetPath));
         }
       })
-      .on('close', resolve)
+      .on('close', async () => {
+        try {
+          // Flatten if the ZIP contains a single top-level folder
+          await flattenZipIfNeeded(destPath);
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      })
       .on('error', reject);
   });
 }
