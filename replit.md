@@ -1,144 +1,113 @@
-# MeryHost - Static Site Hosting Platform
+# MeryHost - Web Hosting Platform
 
 ## Overview
+MeryHost is a full-stack web hosting platform similar to TiinyHost where users can upload zipped folders or single HTML/CSS/JS files and receive unique shareable URLs. The application features a modern purple-accented design matching tiiny.host's aesthetic.
 
-MeryHost is a static site hosting platform that enables users to upload and deploy static websites instantly. Users can upload individual files (HTML, CSS, JS) or ZIP archives containing complete websites, receive a unique URL, and manage their hosted sites through a dashboard interface. The platform emphasizes simplicity and speed, inspired by modern developer platforms like Vercel and Linear.
+## Project Status
+✅ Fully functional hosting platform with:
+- File upload (HTML, CSS, JS, ZIP files)
+- ZIP extraction and static file serving
+- Custom link names for hosted sites
+- Dashboard for managing hosted sites
+- Delete functionality
+- Secure file handling with validation
 
-## User Preferences
+## Architecture
 
-Preferred communication style: Simple, everyday language.
+### Frontend
+- **Framework**: React with Vite
+- **Routing**: Wouter
+- **State Management**: TanStack Query (React Query v5)
+- **UI Components**: Shadcn/ui with Radix primitives
+- **Styling**: Tailwind CSS with purple accent color (265 100% 63%)
+- **Typography**: Inter for UI, JetBrains Mono for monospace
 
-## System Architecture
-
-### Technology Stack
-
-**Frontend Framework**: React with TypeScript
-- Client-side routing using Wouter
-- State management via TanStack Query (React Query)
-- Form handling with React Hook Form and Zod validation
-- UI components from shadcn/ui (Radix UI primitives)
-
-**Backend Framework**: Express.js with TypeScript
-- RESTful API architecture
-- File upload handling with Multer
-- ZIP file extraction using Unzipper
-
-**Database**: PostgreSQL via Neon serverless
-- ORM: Drizzle ORM
-- Schema management with drizzle-kit
-- Connection pooling through Neon's serverless driver
-
-**Build System**: Vite
-- Development server with HMR
-- Production bundling for client code
-- esbuild for server-side bundling
-
-### Design System
-
-The application follows a carefully defined design system documented in `design_guidelines.md`:
-
-**Typography**: Inter for UI text, JetBrains Mono for monospace content (URLs, filenames)
-
-**Color System**: Custom HSL-based color variables supporting light/dark modes with semantic naming (primary, secondary, muted, accent, destructive)
-
-**Spacing**: Tailwind-based spacing primitives using units of 2, 4, 6, 8, 12, 16, and 24
-
-**Component Philosophy**: "Clarity over decoration" - every element serves a functional purpose, emphasizing speed and confidence in user interactions
+### Backend
+- **Framework**: Express.js
+- **Database**: PostgreSQL (Neon)
+- **File Upload**: Multer (10MB limit)
+- **ZIP Extraction**: Unzipper
+- **File Storage**: Local filesystem at `/public/sites/{id}/`
 
 ### Database Schema
+```typescript
+sites {
+  id: text (primary key) - Generated from customLink or random hex
+  filename: text - Original filename
+  customLink: text | null - Optional custom URL segment
+  fileType: text - File extension (html, css, js, zip)
+  uploadedAt: timestamp - Auto-generated
+}
+```
 
-**Sites Table** (`shared/schema.ts`):
-- `id` (text, primary key): Unique identifier for each site
-- `filename` (text): Original uploaded filename
-- `customLink` (text, optional): User-defined custom URL slug
-- `fileType` (text): Type of uploaded file ('zip', 'html', 'css', 'js')
-- `uploadedAt` (timestamp): Auto-generated upload timestamp
+## API Endpoints
 
-The schema supports both individual file uploads and ZIP archives containing multiple files.
+### POST /api/upload
+- Accepts: multipart/form-data with 'file' and optional 'customLink'
+- Validates: File type (.html, .css, .js, .zip only)
+- Returns: `{ success: true, site: {...}, url: string }`
+- Security: Zip Slip protection, file type validation, schema validation
 
-### API Architecture
+### GET /api/sites
+- Returns: Array of all hosted sites with URLs
 
-**Upload Endpoint** (`POST /api/upload`):
-- Accepts multipart form data with file and optional customLink
-- File size limit: 10MB
-- Allowed extensions: .html, .css, .js, .zip
-- Returns site metadata including generated URL
+### GET /api/sites/:id
+- Returns: Single site by ID with URL
 
-**Sites Management**:
-- `GET /api/sites`: Retrieve all user sites
-- `DELETE /api/sites/:id`: Remove a specific site
+### DELETE /api/sites/:id
+- Deletes site files and database record
+- Returns: `{ success: true }`
 
-File uploads are processed to a temporary directory, ZIP files are extracted, and content is served from `public/sites/{site-id}/`.
+## URL Structure
+- **ZIP files**: `/site/{id}/` (serves index.html from extracted content)
+- **HTML files**: `/site/{id}/{filename}`
+- **CSS/JS files**: `/site/{id}/{filename}`
 
-### File Storage Strategy
+## Security Features
+1. **File Type Validation**: Only allows .html, .css, .js, .zip files
+2. **Zip Slip Protection**: Validates ZIP entry paths to prevent directory traversal
+3. **Schema Validation**: Uses Zod schemas to validate all inputs
+4. **File Size Limit**: 10MB maximum upload size
+5. **Custom Link Sanitization**: Only alphanumeric characters and hyphens allowed
 
-**Upload Flow**:
-1. Files uploaded to temporary directory via Multer
-2. ZIP files extracted using Unzipper library
-3. Sanitized ID generation (custom or random 4-byte hex)
-4. Files moved to permanent storage at `public/sites/{id}/`
-5. Database record created with metadata
+## User Flow
+1. **Homepage** (`/`): Upload files with optional custom link name
+2. **Upload**: File is validated, processed (extracted if ZIP), and stored
+3. **Success Modal**: Shows shareable URL
+4. **Dashboard** (`/account`): Lists all hosted sites
+5. **Manage**: Users can view URLs and delete sites
 
-**Security Measures**:
-- File extension validation (whitelist approach)
-- Custom link sanitization (alphanumeric and hyphens only)
-- Size limits enforced at upload time
+## Pages
+- **Home** (`/`): Landing page with upload card
+- **Account** (`/account`): Dashboard showing Live Projects and Custom Domains sections
 
-### Frontend Architecture
+## Recent Changes (October 25, 2025)
+- Implemented full backend with PostgreSQL database
+- Added secure file upload with Multer and Unzipper
+- Implemented Zip Slip protection and file validation
+- Connected frontend to backend API endpoints
+- Added delete functionality with confirmation dialog
+- Fixed URL construction for all file types
+- End-to-end tested upload and delete flows
 
-**Routing Structure**:
-- `/` - Home page with upload interface
-- `/account` - Dashboard showing all uploaded sites
+## Design Guidelines
+- **Primary Color**: Purple (265 100% 63%)
+- **Design Inspiration**: tiiny.host
+- **Header**: Logo on left, action buttons on right
+  - Homepage: "Log in" and "Sign up free"
+  - Account: "Earn $50", "Add Team", "Free plan", "Upgrade"
+- **Upload Card**: Centered with custom link input, file type tabs, drag & drop
+- **Dashboard**: Clean card-based layout with action buttons
 
-**State Management**:
-- Server state cached via React Query
-- Optimistic updates for deletions
-- Toast notifications for user feedback
+## Known Limitations
+- Currently using in-development database (not production)
+- No authentication system yet
+- No custom domain functionality implemented
+- Free plan limit: 1 live site
 
-**Key Components**:
-- `UploadCard`: Main file upload interface with drag-and-drop
-- `SiteCard`: Individual site display with copy URL and delete actions
-- `SuccessModal`: Post-upload confirmation with shareable URL
-- `Header`: Navigation with conditional rendering based on route
-
-### Development Workflow
-
-**Development Mode**: 
-- Vite dev server with middleware mode
-- Express API server
-- Hot module replacement for client code
-
-**Production Build**:
-1. Vite builds client to `dist/public`
-2. esbuild bundles server to `dist/index.js`
-3. Static assets served from Express
-
-**Database Migrations**: Managed via `drizzle-kit push` command
-
-## External Dependencies
-
-**Database Service**: Neon PostgreSQL
-- Serverless PostgreSQL provider
-- Connection via `@neondatabase/serverless` driver
-- Requires `DATABASE_URL` environment variable
-
-**UI Component Library**: shadcn/ui
-- Built on Radix UI primitives
-- Customizable via Tailwind CSS
-- Components styled according to design system guidelines
-
-**Icon Library**: Lucide React
-- Consistent iconography throughout the application
-
-**Font Services**: Google Fonts
-- Inter: Primary UI font
-- JetBrains Mono: Monospace font for technical content
-
-**Development Tools** (Replit-specific):
-- `@replit/vite-plugin-runtime-error-modal`: Error overlay
-- `@replit/vite-plugin-cartographer`: Code navigation
-- `@replit/vite-plugin-dev-banner`: Development indicator
-
-**Form Validation**: Zod
-- Runtime type checking
-- Integration with React Hook Form via `@hookform/resolvers`
+## Future Enhancements
+- User authentication and accounts
+- Custom domain support
+- Automated tests for security vulnerabilities
+- Better error messages (400 vs 500 responses)
+- Additional path resolution hardening for cross-platform compatibility
