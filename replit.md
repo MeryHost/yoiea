@@ -1,16 +1,16 @@
-# MeryHost - Web Hosting Platform
+# MeryHost - Personal Admin Panel
 
 ## Overview
-MeryHost is a full-stack web hosting platform similar to TiinyHost where users can upload zipped folders or single HTML/CSS/JS files and receive unique shareable URLs. The application features a modern purple-accented design matching tiiny.host's aesthetic with full user authentication.
+MeryHost is a personal web hosting admin panel where you can upload zipped folders or single HTML/CSS/JS files and receive unique shareable URLs. The application features a modern purple-accented design and requires authentication to access.
 
 ## Project Status
 ✅ Fully functional hosting platform with:
-- User authentication with Replit Auth (Google, GitHub, Email login)
+- User authentication with Replit Auth (admin access only)
 - File upload (HTML, CSS, JS, ZIP files)
 - ZIP extraction and static file serving
 - Custom link names for hosted sites
-- User-specific dashboards showing only their sites
-- Delete functionality with ownership verification
+- Dashboard showing all your hosted sites
+- Delete functionality for managing sites
 - Secure file handling with validation
 
 ## Architecture
@@ -67,7 +67,7 @@ sites {
 ## API Endpoints
 
 ### Authentication Endpoints
-- **GET /api/login** - Initiates Replit Auth login flow
+- **GET /api/login** - Initiates Replit Auth login flow (access directly via URL)
 - **GET /api/callback** - OAuth callback handler
 - **GET /api/logout** - Logs out user and redirects
 - **GET /api/auth/user** - Returns current authenticated user (protected)
@@ -110,19 +110,17 @@ All endpoints below require authentication (isAuthenticated middleware).
 8. **Custom Link Sanitization**: Only alphanumeric characters and hyphens allowed
 9. **Credential Management**: All API requests include credentials for session cookies
 
-## User Flow
-1. **Homepage** (`/`): Landing page with upload card
-   - Logged out: Shows "Log in" and "Sign up free" buttons
-   - Logged in: Shows "My Sites" and "Log out" buttons
-2. **Login**: Click login → redirected to Replit Auth → callback redirects to home
-3. **Upload**: User uploads file (requires authentication)
+## User Flow (Admin Panel)
+1. **Access**: Navigate to `/api/login` to authenticate
+2. **Homepage** (`/`): Upload card for adding new sites
+3. **Upload**: Upload file with optional custom link
 4. **Success Modal**: Shows shareable URL
-5. **Dashboard** (`/account`): Lists all user's hosted sites (requires authentication)
-6. **Manage**: Users can view URLs and delete their own sites
+5. **Dashboard** (`/account`): Lists all hosted sites
+6. **Manage**: View URLs and delete sites
 
 ## Pages
-- **Home** (`/`): Landing page with upload card (accessible to all)
-- **Account** (`/account`): Dashboard showing Live Projects and Custom Domains (requires authentication)
+- **Home** (`/`): Upload interface (requires authentication)
+- **Account** (`/account`): Dashboard showing all hosted sites (requires authentication)
 
 ## Recent Changes (October 25, 2025)
 ### Initial Implementation
@@ -141,35 +139,34 @@ All endpoints below require authentication (isAuthenticated middleware).
 - Protected all API routes with isAuthenticated middleware
 - Implemented user-specific site filtering (users only see their own sites)
 - Added useAuth hook for authentication state management
-- Updated Header to show login/logout based on auth state
-- Protected Account page to require authentication
-- Added graceful 401 error handling with login redirects
+- Protected all pages to require authentication
 - Fixed queryClient to properly handle auth state with credentials
+
+### Admin Panel Conversion
+- Removed public login/signup buttons from header
+- Simplified header to show only "My Sites" and "Log out" when authenticated
+- Access login by navigating directly to `/api/login`
+- All features require authentication (admin-only access)
 
 ## Design Guidelines
 - **Primary Color**: Purple (265 100% 63%)
-- **Design Inspiration**: tiiny.host
-- **Header**: Logo on left, action buttons on right
-  - Homepage (logged out): "Log in" and "Sign up free"
-  - Homepage (logged in): "My Sites" and "Log out"
-  - Account page: "Earn $50", "Add Team", "Free plan", "Upgrade"
+- **Header**: Logo on left, minimal controls on right (My Sites, Log out)
 - **Upload Card**: Centered with custom link input, file type tabs, drag & drop
 - **Dashboard**: Clean card-based layout with action buttons
 
 ## Technical Notes
 - **Query Key Convention**: First element of query key array must be the full URL string
 - **Credentials**: All API requests include `credentials: 'include'` for session cookies
-- **Error Handling**: 401 errors trigger automatic login redirect with toast notification
+- **Authentication Access**: Navigate to `/api/login` to authenticate
+- **Admin Panel**: No public signup - authentication required for all features
 
 ## Known Limitations
 - Currently using in-development database (not production)
-- Free plan limit: 1 live site per user
-- Custom domain functionality not yet implemented
+- Access requires manual navigation to `/api/login`
 
 ## Future Enhancements
 - Custom domain support with domain verification
 - File analytics and usage statistics
 - Automated cleanup of expired sessions
 - Better error messages (400 vs 500 responses)
-- Team collaboration features
 - Additional file type support (with security review)
