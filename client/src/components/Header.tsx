@@ -45,9 +45,6 @@ export function Header() {
           </div>
         ) : (
           <div className="flex items-center gap-3">
-            <a href="#" className="hidden sm:inline text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Contact sales
-            </a>
             <Button 
               variant="ghost" 
               size="sm" 
