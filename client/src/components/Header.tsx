@@ -1,46 +1,38 @@
-import { CloudUpload } from "lucide-react";
+import { Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Moon, Sun } from "lucide-react";
-import { useEffect, useState } from "react";
 
 export function Header() {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const initialTheme = savedTheme || (prefersDark ? "dark" : "light");
-    setTheme(initialTheme);
-    document.documentElement.classList.toggle("dark", initialTheme === "dark");
-  }, []);
-
-  const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
-    localStorage.setItem("theme", newTheme);
-    document.documentElement.classList.toggle("dark", newTheme === "dark");
-  };
-
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full bg-background border-b">
       <div className="max-w-7xl mx-auto px-6 md:px-8 h-16 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <CloudUpload className="w-7 h-7 text-primary" />
-          <span className="text-2xl font-bold tracking-tight">MeryHost</span>
+          <Zap className="w-6 h-6 text-primary fill-primary" />
+          <span className="text-xl font-bold">MeryHost</span>
         </div>
         
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleTheme}
-          data-testid="button-theme-toggle"
-        >
-          {theme === "light" ? (
-            <Moon className="w-5 h-5" />
-          ) : (
-            <Sun className="w-5 h-5" />
-          )}
-        </Button>
+        <nav className="hidden md:flex items-center gap-8">
+          <a href="#" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            Blog
+          </a>
+          <a href="#" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            API
+          </a>
+          <a href="#" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            Help
+          </a>
+          <a href="#" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            Pricing
+          </a>
+        </nav>
+
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" data-testid="button-login">
+            Log in
+          </Button>
+          <Button size="sm" data-testid="button-signup">
+            Sign up free
+          </Button>
+        </div>
       </div>
     </header>
   );
